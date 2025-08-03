@@ -28,7 +28,6 @@ warnings.filterwarnings("ignore", message=".*duckduckgo_search.*has been renamed
 # Load environment variables
 load_dotenv()
 
-
 class EnhancedSearchAgent:
     """Enhanced search agent with detailed results and error handling"""
 
@@ -194,7 +193,6 @@ class EnhancedSearchAgent:
             return (
                 f"❌ I apologize, but I'm experiencing technical difficulties: {str(e)}"
             )
-
 
 # --- LangGraph State Definition ---
 class AgentGraphState(TypedDict):
