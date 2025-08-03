@@ -1,13 +1,14 @@
+import asyncio
 from dotenv import load_dotenv
+from constants.index import MODEL_NAME
 from typing import TypedDict, Annotated
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langgraph.graph.message import add_messages
+from langchain_community.vectorstores import FAISS
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import asyncio
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 
 load_dotenv()
 
@@ -51,30 +52,6 @@ def get_current_retriever():
     """Get the current retriever"""
     global _current_retriever
     return _current_retriever
-    """Create a simple text-based retriever as fallback"""
-    from langchain.schema import Document
-    
-    class SimpleRetriever:
-        def __init__(self, text):
-            splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-            self.chunks = splitter.create_documents([text])
-        
-        def invoke(self, query):
-            # Simple keyword-based retrieval
-            query_lower = query.lower()
-            scored_chunks = []
-            
-            for chunk in self.chunks:
-                content_lower = chunk.page_content.lower()
-                score = sum(1 for word in query_lower.split() if word in content_lower)
-                if score > 0:
-                    scored_chunks.append((score, chunk))
-            
-            # Sort by score and return top 4
-            scored_chunks.sort(key=lambda x: x[0], reverse=True)
-            return [chunk for score, chunk in scored_chunks[:4]]
-    
-    return SimpleRetriever(text)
 
 def format_docs(docs):
     """Format retrieved documents into a single string"""
@@ -129,7 +106,7 @@ def generate_answer(state: RAGState) -> RAGState:
     Answer in English:
     """
     
-    model = ChatGoogleGenerativeAI(model='gemini-2.5-flash')
+    model = ChatGoogleGenerativeAI(model=MODEL_NAME)
     response = model.invoke([HumanMessage(content=prompt)])
     
     return {'messages': [response]}

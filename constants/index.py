@@ -1,4 +1,5 @@
 
-CONFIG = {'configurable': {'thread_id': '1'}}
-AGENT_CONFIG = {'configurable': {'thread_id': 'agent_1'}}
-RAG_CONFIG = {'configurable': {'thread_id': 'rag_1'}}
+CONFIG_ID = '1'
+RAG_CONFIG_ID = 'rag_1'
+AGENT_CONFIG = 'agent_1'
+MODEL_NAME="gemini-2.5-flash"

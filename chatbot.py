@@ -4,15 +4,11 @@ from components.agent_page import agent_page_component
 from components.chatbot_page import chatbot_page_component
 
 # Page configuration
-st.set_page_config(page_title="Chatbot App", layout="wide")
+st.set_page_config(page_title="Chatbot - Anekant", layout="wide")
 
 # Sidebar for navigation
 st.sidebar.title("Navigation")
 tab = st.sidebar.radio("Select Tab", ["Chatbot", "Agent", "RAG"])
-
-CONFIG = {'configurable': {'thread_id': '1'}}
-AGENT_CONFIG = {'configurable': {'thread_id': 'agent_1'}}
-RAG_CONFIG = {'configurable': {'thread_id': 'rag_1'}}
 
 # Initialize session states for all tabs
 if 'chat_history' not in st.session_state:

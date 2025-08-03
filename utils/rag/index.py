@@ -1,10 +1,10 @@
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_core.messages import HumanMessage
-import tempfile
 import os
-from backend.rag import rag_graph
+import tempfile
 import streamlit as st
-from constants.index import RAG_CONFIG
+from backend.rag import rag_graph
+from constants.index import RAG_CONFIG_ID
+from langchain_core.messages import HumanMessage
+from langchain_community.document_loaders import PyPDFLoader
 
 
 def extract_text_from_pdf(pdf_file):
@@ -38,7 +38,7 @@ def process_rag_query(question):
         }
         
         # Invoke the RAG graph
-        result = rag_graph.invoke(initial_state, config=RAG_CONFIG)
+        result = rag_graph.invoke(initial_state, config={'configurable': {'thread_id': RAG_CONFIG_ID}})
         
         # Extract the response
         response = result['messages'][-1].content

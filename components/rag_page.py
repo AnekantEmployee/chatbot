@@ -6,7 +6,7 @@ from utils.rag.index import extract_text_from_pdf, process_rag_query
 
 def rag_page_component():
     st.title("📄 RAG - Document Q&A")
-        
+    
     # PDF Upload Section
     st.subheader("Upload PDF Document")
 

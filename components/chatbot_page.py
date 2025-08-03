@@ -1,6 +1,6 @@
 import streamlit as st
 from backend.llm import chatbot
-from constants.index import CONFIG
+from constants.index import CONFIG_ID
 from langchain_core.messages import HumanMessage
 
 def chatbot_page_component():
@@ -21,7 +21,7 @@ def chatbot_page_component():
             st.markdown(user_input)
             
         # Get chatbot response
-        result = chatbot.invoke({'messages': HumanMessage(content=user_input)}, config=CONFIG)
+        result = chatbot.invoke({'messages': HumanMessage(content=user_input)}, config={'configurable': {'thread_id': CONFIG_ID}})
         
         response = result['messages'][-1].content
         st.session_state['chat_history'].append({'role': 'ai', 'content': response})
