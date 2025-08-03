@@ -1,11 +1,12 @@
+import time
+import warnings
 from dotenv import load_dotenv
+from constants.index import MODEL_NAME
 from typing import TypedDict, Annotated
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
-import time
-import warnings
 
 # LangChain Agent specific imports
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -33,9 +34,7 @@ class EnhancedSearchAgent:
 
     def __init__(self):
         # Configure model
-        self.model = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp", temperature=0.1
-        )
+        self.model = ChatGoogleGenerativeAI(model=MODEL_NAME, temperature=0.7)
 
         if SEARCH_AVAILABLE:
             try:
