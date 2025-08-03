@@ -5,3 +5,11 @@ langchain_google_genai==2.1.8
 langgraph==0.6.2
 python-dotenv==1.1.1
 streamlit==1.47.1
+
+# Additional dependencies for full functionality
+duckduckgo-search>=5.0.0
+langchainhub
+pypdf
+PyPDF2
+faiss-cpu
+sentence-transformers

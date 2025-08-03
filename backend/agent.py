@@ -3,17 +3,24 @@ from typing import TypedDict, Annotated
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.memory import InMemorySaver
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, AIMessage, HumanMessage
 import time
 import warnings
 
 # LangChain Agent specific imports
 from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.tools import DuckDuckGoSearchRun
-from langchain.agents import create_react_agent, AgentExecutor
-from langchain import hub
 
-# Suppress the ddgs warning
+# Try to import search tools with fallback
+try:
+    from langchain_community.tools import DuckDuckGoSearchRun
+    from langchain.agents import create_react_agent, AgentExecutor
+    from langchain import hub
+    SEARCH_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Search tools not available: {e}")
+    SEARCH_AVAILABLE = False
+
+# Suppress warnings
 warnings.filterwarnings("ignore", message=".*duckduckgo_search.*has been renamed.*")
 
 # Load environment variables
@@ -23,34 +30,43 @@ class EnhancedSearchAgent:
     """Enhanced search agent with detailed results and error handling"""
     
     def __init__(self):
-        # Configure search tool with better settings
-        self.search_tool = DuckDuckGoSearchRun(
-            max_results=8,
-            region='wt-wt',
-            time='d',
-            safesearch='moderate'
-        )
-        
         # Configure model
         self.model = ChatGoogleGenerativeAI(
             model='gemini-2.0-flash-exp',
             temperature=0.1
         )
         
-        # Create agent
-        self.prompt = hub.pull("hwchase17/react")
-        agent = create_react_agent(self.model, [self.search_tool], self.prompt)
-        
-        # Configure executor
-        self.agent_executor = AgentExecutor(
-            agent=agent,
-            tools=[self.search_tool],
-            verbose=True,
-            max_iterations=4,
-            max_execution_time=45,
-            return_intermediate_steps=True,
-            handle_parsing_errors=True
-        )
+        if SEARCH_AVAILABLE:
+            try:
+                # Configure search tool with better settings
+                self.search_tool = DuckDuckGoSearchRun(
+                    max_results=5,
+                    region='wt-wt',
+                    safesearch='moderate'
+                )
+                
+                # Create agent
+                self.prompt = hub.pull("hwchase17/react")
+                agent = create_react_agent(self.model, [self.search_tool], self.prompt)
+                
+                # Configure executor
+                self.agent_executor = AgentExecutor(
+                    agent=agent,
+                    tools=[self.search_tool],
+                    verbose=False,
+                    max_iterations=3,
+                    max_execution_time=30,
+                    return_intermediate_steps=True,
+                    handle_parsing_errors=True
+                )
+                self.search_enabled = True
+                print("✅ Search agent initialized successfully")
+            except Exception as e:
+                print(f"⚠️ Search initialization failed: {e}")
+                self.search_enabled = False
+        else:
+            self.search_enabled = False
+            print("⚠️ Search functionality disabled - dependencies not available")
     
     def format_detailed_results(self, raw_search_data):
         """Format raw search data into readable results"""
@@ -71,7 +87,10 @@ class EnhancedSearchAgent:
         return "\n\n".join(formatted_results) if formatted_results else raw_search_data
     
     def search_with_details(self, query: str) -> str:
-        """Enhanced search with detailed results"""
+        """Enhanced search with detailed results or fallback to direct LLM response"""
+        if not self.search_enabled:
+            return self.direct_llm_response(query)
+        
         try:
             print(f"\n🔍 Searching for: {query}")
             
@@ -113,7 +132,7 @@ class EnhancedSearchAgent:
                 detailed_results = self.format_detailed_results(raw_search_data)
                 response_parts.append(f"\n📊 **DETAILED SEARCH RESULTS:**\n{detailed_results}")
             else:
-                response_parts.append("\nℹ️ No detailed search data captured.")
+                response_parts.append("\nℹ️ Search completed successfully.")
             
             return "\n".join(response_parts)
             
@@ -121,20 +140,44 @@ class EnhancedSearchAgent:
             error_msg = str(e)
             print(f"❌ Search Error: {error_msg}")
             
-            # Provide specific error responses
-            if "timeout" in error_msg.lower():
-                return "⏰ Search timed out. The service may be busy. Please try again in a moment."
-            elif "duckduckgo" in error_msg.lower():
-                return "🔍 Search service temporarily unavailable. Please try again later."
-            else:
-                return f"❌ Search failed: {error_msg}"
+            # Fallback to direct LLM response
+            return self.direct_llm_response(query)
+    
+    def direct_llm_response(self, query: str) -> str:
+        """Direct LLM response when search is not available"""
+        try:
+            prompt = f"""
+            You are a helpful AI assistant. The user has asked: "{query}"
+            
+            Please provide a comprehensive and helpful response based on your knowledge.
+            If this appears to be a question that would benefit from current information,
+            please mention that your knowledge has a cutoff date and recommend that the user
+            search for the most recent information.
+            
+            Format your response clearly and helpfully.
+            """
+            
+            response = self.model.invoke([HumanMessage(content=prompt)])
+            
+            return f"""🤖 **AI ASSISTANT RESPONSE:**
+
+{response.content}
+
+ℹ️ *Note: Search functionality is currently unavailable. This response is based on my training data. For the most current information, please verify with recent sources.*"""
+            
+        except Exception as e:
+            return f"❌ I apologize, but I'm experiencing technical difficulties: {str(e)}"
 
 # --- LangGraph State Definition ---
 class AgentGraphState(TypedDict):
     messages: Annotated[list[BaseMessage], add_messages]
 
 # Initialize the enhanced agent
-enhanced_agent = EnhancedSearchAgent()
+try:
+    enhanced_agent = EnhancedSearchAgent()
+except Exception as e:
+    print(f"❌ Failed to initialize agent: {e}")
+    enhanced_agent = None
 
 # --- LangGraph Node Function ---
 def run_enhanced_agent(state: AgentGraphState) -> AgentGraphState:
@@ -144,21 +187,29 @@ def run_enhanced_agent(state: AgentGraphState) -> AgentGraphState:
 
     print(f"\n--- 🚀 Enhanced Agent Processing: '{user_query}' ---")
     
-    try:
-        # Use enhanced search
-        agent_response_content = enhanced_agent.search_with_details(user_query)
-        
-    except Exception as e:
-        error_msg = str(e)
-        print(f"--- ❌ Agent Error: {error_msg} ---")
-        
-        # Fallback responses
-        if "timeout" in error_msg.lower():
-            agent_response_content = "⏰ I'm experiencing network delays. The search is taking longer than expected. Please try again in a few moments."
-        elif "duckduckgo" in error_msg.lower():
-            agent_response_content = "🔍 The search service is temporarily unavailable. This could be due to high traffic or maintenance. Please try again later."
-        else:
-            agent_response_content = f"❌ An unexpected error occurred: {error_msg}. Please try rephrasing your request."
+    if enhanced_agent is None:
+        agent_response_content = "❌ Agent is not properly initialized. Please check the configuration."
+    else:
+        try:
+            # Use enhanced search or fallback
+            agent_response_content = enhanced_agent.search_with_details(user_query)
+            
+        except Exception as e:
+            error_msg = str(e)
+            print(f"--- ❌ Agent Error: {error_msg} ---")
+            
+            # Final fallback
+            agent_response_content = f"""❌ I encountered an error while processing your request: {error_msg}
+
+🤖 **Basic Response:**
+I understand you're asking about: "{user_query}"
+
+Unfortunately, I'm experiencing technical difficulties with my advanced features. For the best results, please:
+1. Try rephrasing your question
+2. Check for any recent updates or current information online
+3. Contact support if this issue persists
+
+I apologize for the inconvenience."""
 
     print(f"--- ✅ Agent Response Ready ---\n")
     return {'messages': [AIMessage(content=agent_response_content)]}
