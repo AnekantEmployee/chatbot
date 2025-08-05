@@ -1,15 +1,8 @@
 langchain==0.3.27
 langchain_community==0.3.27
 langchain_core==0.3.72
-langchain_google_genai==2.1.8
-langgraph==0.6.2
+langchain_google_genai==2.1.9
+langchain_tavily==0.2.11
+langgraph==0.6.3
 python-dotenv==1.1.1
 streamlit==1.47.1
-
-# Additional dependencies for full functionality
-duckduckgo-search>=5.0.0
-langchainhub
-pypdf
-PyPDF2
-faiss-cpu
-sentence-transformers
